@@ -6,9 +6,18 @@ import json
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import Any, Protocol
 
-from .client import BiomodelsClient
+
+class BiomodelsJsonClient(Protocol):
+    def get_json(self, path: str, *, params: dict[str, Any] | None = None) -> Any: ...
+
+
+class BiomodelsDownloadClient(BiomodelsJsonClient, Protocol):
+    def download_file(
+        self, *, path: str, params: dict[str, Any] | None, output_path: Path
+    ) -> None: ...
+
 
 OutputMode = str
 
@@ -51,20 +60,20 @@ def parse_key_value_pairs(items: Sequence[str]) -> dict[str, str]:
     return parsed
 
 
-def model_get(client: BiomodelsClient, model_id: str) -> Any:
+def model_get(client: BiomodelsJsonClient, model_id: str) -> Any:
     return client.get_json(f"/{model_id}")
 
 
-def model_files(client: BiomodelsClient, model_id: str) -> Any:
+def model_files(client: BiomodelsJsonClient, model_id: str) -> Any:
     return client.get_json(f"/model/files/{model_id}")
 
 
-def model_identifiers(client: BiomodelsClient) -> Any:
+def model_identifiers(client: BiomodelsJsonClient) -> Any:
     return client.get_json("/model/identifiers")
 
 
 def model_download(
-    client: BiomodelsClient, model_id: str, filename: str | None, output: Path
+    client: BiomodelsDownloadClient, model_id: str, filename: str | None, output: Path
 ) -> Path:
     params = {"filename": filename} if filename else None
     client.download_file(path=f"/model/download/{model_id}", params=params, output_path=output)
@@ -72,7 +81,7 @@ def model_download(
 
 
 def show_model(
-    client: BiomodelsClient, model_id: str, *, include_full_files: bool
+    client: BiomodelsJsonClient, model_id: str, *, include_full_files: bool
 ) -> dict[str, Any]:
     model = model_get(client, model_id)
     files = model_files(client, model_id)
@@ -121,7 +130,7 @@ def choose_main_xml_filename(files_payload: Any) -> str | None:
 
 
 def search_models(
-    client: BiomodelsClient,
+    client: BiomodelsJsonClient,
     *,
     query: str,
     offset: int | None,
@@ -139,7 +148,7 @@ def search_models(
 
 
 def search_all_models(
-    client: BiomodelsClient,
+    client: BiomodelsJsonClient,
     *,
     query: str,
     page_size: int,
@@ -175,14 +184,14 @@ def search_all_models(
     return results
 
 
-def search_download(client: BiomodelsClient, models: Sequence[str], output: Path) -> Path:
+def search_download(client: BiomodelsDownloadClient, models: Sequence[str], output: Path) -> Path:
     joined = ",".join(models)
     client.download_file(path="/search/download", params={"models": joined}, output_path=output)
     return output
 
 
 def parameter_search(
-    client: BiomodelsClient,
+    client: BiomodelsJsonClient,
     *,
     query: str | None,
     start: int | None,
@@ -202,7 +211,7 @@ def parameter_search(
 
 
 def parameter_grep(
-    client: BiomodelsClient,
+    client: BiomodelsJsonClient,
     *,
     query: str | None,
     start: int | None,
@@ -261,32 +270,32 @@ def _contains(value: Any, needle: str) -> bool:
     return needle.casefold() in str(value).casefold()
 
 
-def p2m_missing(client: BiomodelsClient) -> Any:
+def p2m_missing(client: BiomodelsJsonClient) -> Any:
     return client.get_json("/p2m/missing")
 
 
-def p2m_representative(client: BiomodelsClient, model: str) -> Any:
+def p2m_representative(client: BiomodelsJsonClient, model: str) -> Any:
     return client.get_json("/p2m/representative", params={"model": model})
 
 
-def p2m_representatives(client: BiomodelsClient, model_ids: Sequence[str]) -> Any:
+def p2m_representatives(client: BiomodelsJsonClient, model_ids: Sequence[str]) -> Any:
     return client.get_json("/p2m/representatives", params={"modelIds": ",".join(model_ids)})
 
 
-def pdgsmm_missing(client: BiomodelsClient) -> Any:
+def pdgsmm_missing(client: BiomodelsJsonClient) -> Any:
     return client.get_json("/pdgsmm/missing")
 
 
-def pdgsmm_representative(client: BiomodelsClient, model: str) -> Any:
+def pdgsmm_representative(client: BiomodelsJsonClient, model: str) -> Any:
     return client.get_json("/pdgsmm/representative", params={"model": model})
 
 
-def pdgsmm_representatives(client: BiomodelsClient, model_ids: Sequence[str]) -> Any:
+def pdgsmm_representatives(client: BiomodelsJsonClient, model_ids: Sequence[str]) -> Any:
     return client.get_json("/pdgsmm/representatives", params={"modelIds": ",".join(model_ids)})
 
 
 def resolve_models(
-    client: BiomodelsClient,
+    client: BiomodelsJsonClient,
     model_ids: Sequence[str],
     *,
     family: str,
@@ -360,7 +369,7 @@ def filter_identifiers(
     return {"hits": len(filtered), "models": filtered}
 
 
-def query_stats(client: BiomodelsClient, *, query: str) -> dict[str, Any]:
+def query_stats(client: BiomodelsJsonClient, *, query: str) -> dict[str, Any]:
     payload = search_models(client, query=query, offset=0, num_results=100, sort=None)
     if not isinstance(payload, dict):
         return {

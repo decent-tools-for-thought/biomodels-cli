@@ -11,7 +11,7 @@ from biomodels_cli.exceptions import ApiError, ResponseDecodeError
 
 def _mock_client(handler: httpx.MockTransport) -> BiomodelsClient:
     client = BiomodelsClient(base_url="https://www.biomodels.org/", timeout=5.0)
-    client._client = httpx.Client(transport=handler, base_url="https://www.biomodels.org/")  # type: ignore[attr-defined]
+    client._client = httpx.Client(transport=handler, base_url="https://www.biomodels.org/")
     return client
 
 
