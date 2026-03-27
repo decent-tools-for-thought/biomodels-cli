@@ -27,6 +27,7 @@ from .core import (
     pdgsmm_missing,
     pdgsmm_representative,
     pdgsmm_representatives,
+    query_stats,
     render_output,
     resolve_models,
     search_all_models,
@@ -82,6 +83,7 @@ def build_parser() -> argparse.ArgumentParser:
     add_fetch_subcommand(subparsers)
     add_resolve_subcommand(subparsers)
     add_ids_subcommand(subparsers)
+    add_stats_subcommand(subparsers)
     add_inspect_subcommand(subparsers)
     add_raw_subcommand(subparsers)
 
@@ -270,6 +272,13 @@ def add_ids_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentP
     ids.add_argument("--limit", type=int, default=None, help="Maximum identifiers")
 
 
+def add_stats_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    stats = subparsers.add_parser("stats", help="Query result summary statistics")
+    stats_sub = stats.add_subparsers(dest="stats_command", required=True)
+    query_cmd = stats_sub.add_parser("query", help="Summarize first page of search results")
+    query_cmd.add_argument("query", help="Search query")
+
+
 def add_inspect_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
     inspect = subparsers.add_parser("inspect", help="Inspect and validate queries")
     inspect_sub = inspect.add_subparsers(dest="inspect_command", required=True)
@@ -391,6 +400,8 @@ def dispatch(args: argparse.Namespace, config: Config) -> int:
             return dispatch_resolve(args, client, output_mode=args.output)
         if args.command == "ids":
             return dispatch_ids(args, client, output_mode=args.output)
+        if args.command == "stats":
+            return dispatch_stats(args, client, output_mode=args.output)
         if args.command == "inspect":
             return dispatch_inspect(args, client, output_mode=args.output)
         if args.command == "raw":
@@ -646,6 +657,14 @@ def dispatch_inspect(args: argparse.Namespace, client: BiomodelsClient, *, outpu
             sort=None,
         )
         payload["matches"] = validation.get("matches") if isinstance(validation, dict) else None
+    print(render_output(payload, output_mode=output_mode).content)
+    return 0
+
+
+def dispatch_stats(args: argparse.Namespace, client: BiomodelsClient, *, output_mode: str) -> int:
+    if args.stats_command != "query":
+        raise ValueError(f"Unknown stats subcommand: {args.stats_command}")
+    payload = query_stats(client, query=args.query)
     print(render_output(payload, output_mode=output_mode).content)
     return 0
 

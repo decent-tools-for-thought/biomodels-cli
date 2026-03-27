@@ -360,6 +360,49 @@ def filter_identifiers(
     return {"hits": len(filtered), "models": filtered}
 
 
+def query_stats(client: BiomodelsClient, *, query: str) -> dict[str, Any]:
+    payload = search_models(client, query=query, offset=0, num_results=100, sort=None)
+    if not isinstance(payload, dict):
+        return {
+            "query": query,
+            "matches": 0,
+            "returned": 0,
+            "curation_status": {},
+            "formats": {},
+            "submitters": {},
+        }
+
+    models = payload.get("models")
+    model_list = models if isinstance(models, list) else []
+
+    curation_status: dict[str, int] = {}
+    formats: dict[str, int] = {}
+    submitters: dict[str, int] = {}
+
+    for model in model_list:
+        if not isinstance(model, dict):
+            continue
+
+        curation = str(model.get("curationStatus", "unknown"))
+        fmt = str(model.get("format", "unknown"))
+        submitter = str(model.get("submitter", "unknown"))
+
+        curation_status[curation] = curation_status.get(curation, 0) + 1
+        formats[fmt] = formats.get(fmt, 0) + 1
+        submitters[submitter] = submitters.get(submitter, 0) + 1
+
+    top_submitters = dict(sorted(submitters.items(), key=lambda item: item[1], reverse=True)[:10])
+
+    return {
+        "query": query,
+        "matches": payload.get("matches", len(model_list)),
+        "returned": len(model_list),
+        "curation_status": curation_status,
+        "formats": formats,
+        "top_submitters": top_submitters,
+    }
+
+
 def render_output(data: Any, *, output_mode: OutputMode) -> RenderedOutput:
     if output_mode == "json":
         return RenderedOutput(content=json.dumps(data, indent=2, sort_keys=True))

@@ -218,6 +218,15 @@ def test_inspect_query_with_validation(capsys: pytest.CaptureFixture[str]) -> No
     assert payload["valid"] is True
 
 
+def test_stats_query_command(capsys: pytest.CaptureFixture[str]) -> None:
+    rc = cli.main(["--output", "json", "stats", "query", "insulin"])
+    captured = capsys.readouterr()
+    assert rc == 0
+    payload = json.loads(captured.out)
+    assert payload["query"] == "insulin"
+    assert "formats" in payload
+
+
 def test_model_get_xml_passthrough(capsys: pytest.CaptureFixture[str]) -> None:
     rc = cli.main(["model", "get", "BIOMD0000000001", "--api-format", "xml"])
     captured = capsys.readouterr()

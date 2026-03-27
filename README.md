@@ -42,6 +42,7 @@ Top-level command families:
 - `fetch`: download helper workflows for model/query inputs
 - `resolve`: representative mapping resolver across ID families
 - `ids`: high-level identifier export with prefix filters
+- `stats`: summary statistics over search results
 - `inspect`: query normalization and optional upstream validation
 - `raw`: generic escape hatch for direct endpoint calls
 
@@ -112,6 +113,7 @@ High-level parameter/ID utilities:
 ```bash
 biomodels --output json params grep --query insulin --model BIOMD0000000580 --fields model,entity,parameters
 biomodels ids --prefix BIOMD --limit 20
+biomodels --output json stats query 'name:insulin'
 biomodels --output json inspect query insulin --validate
 biomodels params search --query insulin --api-format csv
 ```

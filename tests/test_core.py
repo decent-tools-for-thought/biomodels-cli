@@ -10,6 +10,7 @@ from biomodels_cli.core import (
     normalize_find_query,
     parameter_grep,
     parse_key_value_pairs,
+    query_stats,
     render_output,
     resolve_models,
     search_all_models,
@@ -44,6 +45,20 @@ class ResolveStubClient:
         assert params is not None
         requested = params["model"]
         return {"requestedModelId": requested, "representativeModelId": f"REP-{requested}"}
+
+
+class StatsStubClient:
+    def get_json(self, path: str, *, params: dict[str, Any] | None = None) -> Any:
+        _ = params
+        assert path == "/search"
+        return {
+            "matches": 3,
+            "models": [
+                {"format": "SBML", "curationStatus": "CURATED", "submitter": "Alice"},
+                {"format": "SBML", "curationStatus": "CURATED", "submitter": "Bob"},
+                {"format": "CellML", "curationStatus": "NON_CURATED", "submitter": "Alice"},
+            ],
+        }
 
 
 def test_parse_key_value_pairs_success() -> None:
@@ -140,3 +155,12 @@ def test_resolve_models_auto_family() -> None:
     out = resolve_models(ResolveStubClient(), ["BMID123", "MODEL999"], family="auto")
     assert out["results"][0]["family"] == "p2m"
     assert out["results"][1]["family"] == "pdgsmm"
+
+
+def test_query_stats_summarizes_distribution() -> None:
+    out = query_stats(StatsStubClient(), query="insulin")
+    assert out["matches"] == 3
+    assert out["returned"] == 3
+    assert out["formats"]["SBML"] == 2
+    assert out["curation_status"]["CURATED"] == 2
+    assert out["top_submitters"]["Alice"] == 2
