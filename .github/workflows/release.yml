@@ -29,6 +29,11 @@ jobs:
         with:
           python-version: "3.13"
 
+      - name: Install release validation environment
+        run: |
+          python -m pip install --upgrade pip build pytest
+          python -m pip install -e .
+
       - name: Resolve release tag
         id: release_meta
         run: |
@@ -46,9 +51,7 @@ jobs:
         run: python -m pytest -q
 
       - name: Build Python distributions
-        run: |
-          python -m pip install --upgrade build
-          python -m build
+        run: python -m build
 
       - name: Generate checksums
         run: sha256sum dist/* > dist/SHA256SUMS.txt
@@ -57,7 +60,7 @@ jobs:
         run: |
           python -m venv .venv-wheel
           .venv-wheel/bin/python -m pip install --upgrade pip
-          .venv-wheel/bin/python -m pip install --no-deps dist/*.whl
+          .venv-wheel/bin/python -m pip install dist/*.whl
           .venv-wheel/bin/python -c "import biomodels_cli"
           .venv-wheel/bin/biomodels --help >/dev/null
 
