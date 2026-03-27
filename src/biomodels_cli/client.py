@@ -72,6 +72,16 @@ class BiomodelsClient:
         headers = {k: v for k, v in response.headers.items()}
         return response.status_code, headers, response.content
 
+    def get_text(
+        self,
+        path: str,
+        *,
+        params: dict[str, Any] | None = None,
+        accept: str,
+    ) -> str:
+        response = self._request("GET", path, params=params, accept=accept)
+        return response.text
+
     def get_json(self, path: str, *, params: dict[str, Any] | None = None) -> Any:
         response = self._request("GET", path, params=params, accept="application/json")
         try:

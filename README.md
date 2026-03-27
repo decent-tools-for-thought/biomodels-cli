@@ -37,6 +37,12 @@ Top-level command families:
 - `params`: parameter search endpoint
 - `p2m`: Path2Models missing/representative mapping
 - `pdgsmm`: PDGSMM missing/representative mapping
+- `find`: high-level model finder from plain text or query syntax
+- `show`: consolidated model + files summary view
+- `fetch`: download helper workflows for model/query inputs
+- `resolve`: representative mapping resolver across ID families
+- `ids`: high-level identifier export with prefix filters
+- `inspect`: query normalization and optional upstream validation
 - `raw`: generic escape hatch for direct endpoint calls
 
 Common options:
@@ -45,6 +51,13 @@ Common options:
 - `--timeout`: request timeout in seconds
 - `--config`: path to JSON config file
 - `--output {text,json,jsonl}`: output mode
+
+Endpoint format options (where supported):
+
+- `--api-format json|xml|html` on model/search/mapping commands
+- `--api-format json|xml|csv` on `params search`
+
+`--api-format` controls upstream content negotiation (`format` query parameter + `Accept` header). For non-JSON upstream formats, CLI prints raw response text.
 
 Bare invocation prints help and exits `0`.
 
@@ -55,6 +68,8 @@ Search models:
 ```bash
 biomodels search query 'name:insulin'
 biomodels --output json search query 'PUBMED:"27869123"'
+biomodels --output json find insulin --limit 10
+biomodels find pubmed:27869123
 ```
 
 Fetch all pages from a query (useful for pipelines):
@@ -68,6 +83,9 @@ Get model details and files:
 ```bash
 biomodels model get BIOMD0000000123
 biomodels --output json model files BIOMD0000000123
+biomodels --output json show BIOMD0000000123
+biomodels --output json show BIOMD0000000123 --full
+biomodels model get BIOMD0000000123 --api-format xml
 ```
 
 Download model assets:
@@ -76,6 +94,9 @@ Download model assets:
 biomodels model download BIOMD0000000123 -o BIOMD0000000123.omex
 biomodels model download BIOMD0000000123 --filename model.xml -o model.xml
 biomodels search download BIOMD0000000123 BIOMD0000000231 -o models.zip
+biomodels fetch model BIOMD0000000123
+biomodels fetch model BIOMD0000000123 --main-xml
+biomodels fetch query 'name:insulin' --limit 25 -o insulin-models.zip
 ```
 
 Path2Models and PDGSMM mappings:
@@ -84,6 +105,16 @@ Path2Models and PDGSMM mappings:
 biomodels p2m missing
 biomodels p2m representative BMID000000112902
 biomodels pdgsmm representatives MODEL1707110145 MODEL1707112456
+biomodels --output json resolve BMID000000112902 MODEL1707110145 --family auto
+
+High-level parameter/ID utilities:
+
+```bash
+biomodels --output json params grep --query insulin --model BIOMD0000000580 --fields model,entity,parameters
+biomodels ids --prefix BIOMD --limit 20
+biomodels --output json inspect query insulin --validate
+biomodels params search --query insulin --api-format csv
+```
 ```
 
 Raw endpoint access:
