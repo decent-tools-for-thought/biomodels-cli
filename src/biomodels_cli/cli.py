@@ -86,8 +86,92 @@ def build_parser() -> argparse.ArgumentParser:
     add_stats_subcommand(subparsers)
     add_inspect_subcommand(subparsers)
     add_raw_subcommand(subparsers)
+    add_docs_subcommand(subparsers)
 
     return parser
+
+
+def _format_default(value: Any) -> Any:
+    if value is argparse.SUPPRESS:
+        return None
+    if isinstance(value, Path):
+        return str(value)
+    return value
+
+
+def _option_doc(action: argparse.Action) -> dict[str, Any]:
+    return {
+        "flags": list(action.option_strings),
+        "dest": action.dest,
+        "required": bool(getattr(action, "required", False)),
+        "default": _format_default(action.default),
+        "choices": list(action.choices) if action.choices is not None else None,
+        "help": action.help,
+    }
+
+
+def _positional_doc(action: argparse.Action) -> dict[str, Any]:
+    return {
+        "name": action.dest,
+        "nargs": action.nargs,
+        "choices": list(action.choices) if action.choices is not None else None,
+        "help": action.help,
+    }
+
+
+def _collect_argument_docs(
+    parser: argparse.ArgumentParser,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    options: list[dict[str, Any]] = []
+    positionals: list[dict[str, Any]] = []
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            continue
+        if action.dest == "help":
+            continue
+        if action.option_strings:
+            options.append(_option_doc(action))
+        else:
+            positionals.append(_positional_doc(action))
+    return options, positionals
+
+
+def _collect_command_docs(
+    parser: argparse.ArgumentParser,
+    *,
+    path: Sequence[str] = (),
+) -> list[dict[str, Any]]:
+    commands: list[dict[str, Any]] = []
+    for action in parser._actions:
+        if not isinstance(action, argparse._SubParsersAction):
+            continue
+
+        help_by_name = {choice.dest: choice.help for choice in action._choices_actions}
+        for name, subparser in action.choices.items():
+            command_path = [*path, name]
+            options, positionals = _collect_argument_docs(subparser)
+            children = _collect_command_docs(subparser, path=command_path)
+            commands.append(
+                {
+                    "command": " ".join(command_path),
+                    "summary": help_by_name.get(name),
+                    "usage": subparser.format_usage().strip(),
+                    "options": options,
+                    "positionals": positionals,
+                    "subcommands": children,
+                }
+            )
+    return commands
+
+
+def generate_docs_payload(parser: argparse.ArgumentParser) -> dict[str, Any]:
+    options, _ = _collect_argument_docs(parser)
+    return {
+        "program": parser.prog,
+        "description": parser.description,
+        "global_options": options,
+        "commands": _collect_command_docs(parser),
+    }
 
 
 def add_model_subcommands(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
@@ -353,12 +437,24 @@ def add_raw_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentP
     )
 
 
+def add_docs_subcommand(subparsers: argparse._SubParsersAction[argparse.ArgumentParser]) -> None:
+    subparsers.add_parser(
+        "docs",
+        help="Render command documentation generated from the CLI parser",
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
 
     if args.command is None:
         parser.print_help(sys.stdout)
+        return 0
+
+    if args.command == "docs":
+        payload = generate_docs_payload(parser)
+        print(render_output(payload, output_mode=args.output).content)
         return 0
 
     try:

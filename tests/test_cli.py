@@ -253,3 +253,27 @@ def test_mapping_representative_xml_passthrough(capsys: pytest.CaptureFixture[st
     captured = capsys.readouterr()
     assert rc == 0
     assert "path=/p2m/representative" in captured.out
+
+
+def _collect_doc_commands(commands: list[dict[str, Any]]) -> set[str]:
+    found: set[str] = set()
+    for command in commands:
+        found.add(command["command"])
+        nested = command.get("subcommands")
+        if isinstance(nested, list):
+            found.update(_collect_doc_commands(nested))
+    return found
+
+
+def test_docs_command_covers_all_registered_commands(capsys: pytest.CaptureFixture[str]) -> None:
+    parser = cli.build_parser()
+    expected = {entry["command"] for entry in cli._collect_command_docs(parser)}
+
+    rc = cli.main(["--output", "json", "docs"])
+    captured = capsys.readouterr()
+    assert rc == 0
+
+    payload = json.loads(captured.out)
+    documented = _collect_doc_commands(payload["commands"])
+    assert expected.issubset(documented)
+    assert "docs" in documented
