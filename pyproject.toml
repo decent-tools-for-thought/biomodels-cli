@@ -35,7 +35,7 @@ Repository = "https://github.com/example/biomodels-cli"
 [project.scripts]
 biomodels = "biomodels_cli.cli:main"
 
-[project.optional-dependencies]
+[dependency-groups]
 dev = [
   "build>=1.2.2",
   "mypy>=1.10",
